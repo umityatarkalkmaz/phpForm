@@ -30,7 +30,7 @@ require 'path/to/form.php';
 use UmitYatarkalkmaz\Form;
 
 if(Form::isPost() && Form::post('submit') == 'contact'){
-    $data = Form::formControl('phone');
+    $data = Form::formControl(['phone']);
     $email = $data['email'];
     $phone = $data['phone'] ?? false;
 }
