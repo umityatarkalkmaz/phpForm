@@ -1,0 +1,47 @@
+{
+    "name": "umityatarkalkmaz/form",
+    "description": "Reads request input as trimmed strings and escapes values on output",
+    "type": "library",
+    "keywords": [
+        "form",
+        "input",
+        "request",
+        "escaping"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Umit Yatarkalkmaz",
+            "email": "umityatarkalkmaz@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5 || ^12.0",
+        "phpstan/phpstan": "^2.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "UmitYatarkalkmaz\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "UmitYatarkalkmaz\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse",
+        "check": [
+            "@analyse",
+            "@test"
+        ]
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}
