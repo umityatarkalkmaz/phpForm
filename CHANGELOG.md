@@ -5,6 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-09-02
+
+### Security
+
+- **A required field could be satisfied by an invisible character.** `trim()`
+  works on bytes, so a value of one U+00A0 no-break space — or a zero-width
+  character pasted in with a copied value — passed `validatePost()` while
+  looking empty to everyone reading the page. Trimming now covers ASCII
+  whitespace plus U+00A0, U+200B–U+200D and U+FEFF.
+- **A NUL byte was returned as submitted.** `avatar.png\0.php` reads as
+  `avatar.png` to filesystem calls, some database drivers and header output, so
+  a value could pass a check written against the string PHP sees and act as a
+  different one downstream. A value containing a NUL byte is now reported as
+  absent, exactly like an array submission.
+
+### Changed
+
+- **BREAKING: `isPost()` and `isGet()` compare the method exactly.** They
+  uppercased `$_SERVER['REQUEST_METHOD']` first, so `pOsT` satisfied
+  `isPost()`. HTTP methods are case-sensitive; a server reporting `post` is not
+  something this library should be guessing for.
+
+### Fixed
+
+- `validatePost()` and `findMissingPost()` each carried their own copy of the
+  "missing or empty" rule; they now share one, so they cannot disagree about
+  which fields count as filled.
+- Documented that `validatePost([])` succeeds with a falsy `[]`, so the result
+  must be checked with `=== null` rather than a truthiness test.
+
 ## [2.0.0] - 2026-09-02
 
 ### Changed
@@ -37,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A field holding `"0"` was treated as empty by `formControl()`, because the
   check was a falsy test rather than a comparison against `''`.
 - `isPost()` and `isGet()` raised an undefined-index warning when
-  `$_SERVER['REQUEST_METHOD']` was not set, and are now case-insensitive.
+  `$_SERVER['REQUEST_METHOD']` was not set, and now return `false` instead.
 - `escapeHtml()` adds `ENT_SUBSTITUTE` and an explicit UTF-8 charset, so
   malformed input yields a replacement character instead of an empty string.
 

@@ -35,11 +35,16 @@ final class FormTest extends TestCase
         self::assertFalse(Form::isPost());
     }
 
-    public function testMethodCheckIsCaseInsensitive(): void
+    public function testMethodCheckIsCaseSensitive(): void
     {
+        // HTTP methods are case-sensitive; 'post' is not the POST method.
         $_SERVER['REQUEST_METHOD'] = 'post';
 
-        self::assertTrue(Form::isPost());
+        self::assertFalse(Form::isPost());
+
+        $_SERVER['REQUEST_METHOD'] = 'Get';
+
+        self::assertFalse(Form::isGet());
     }
 
     public function testMethodChecksAreFalseWhenTheServerDidNotSetOne(): void
@@ -55,6 +60,59 @@ final class FormTest extends TestCase
 
         self::assertSame('Ümit', Form::fetchPost('username'));
         self::assertSame('3', Form::fetchGet('page'));
+    }
+
+    #[DataProvider('provideInvisibleWhitespace')]
+    public function testFetchTrimsInvisibleWhitespaceTheBrowserSends(string $whitespace): void
+    {
+        $_POST['username'] = $whitespace . 'Ümit' . $whitespace;
+        $_GET['page'] = $whitespace;
+
+        self::assertSame('Ümit', Form::fetchPost('username'));
+        self::assertSame('', Form::fetchGet('page'));
+    }
+
+    #[DataProvider('provideInvisibleWhitespace')]
+    public function testAFieldOfNothingButInvisibleWhitespaceIsNotFilledIn(string $whitespace): void
+    {
+        $_POST = ['email' => 'a@b.test', 'name' => $whitespace];
+
+        self::assertNull(Form::validatePost(['email', 'name']));
+        self::assertSame(['name'], Form::findMissingPost(['email', 'name']));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideInvisibleWhitespace(): iterable
+    {
+        yield 'ascii space' => [' '];
+        yield 'tab and newline' => ["\t\n"];
+        yield 'no-break space' => ["\u{00A0}"];
+        yield 'zero width space' => ["\u{200B}"];
+        yield 'zero width non-joiner' => ["\u{200C}"];
+        yield 'zero width joiner' => ["\u{200D}"];
+        yield 'byte order mark' => ["\u{FEFF}"];
+        yield 'mixed' => ["\u{FEFF} \u{00A0}\t"];
+    }
+
+    public function testInvalidUtf8StillGetsAsciiTrimming(): void
+    {
+        $_POST['blob'] = "  \xff\xfe  ";
+
+        self::assertSame("\xff\xfe", Form::fetchPost('blob'));
+    }
+
+    public function testAValueHoldingANulByteIsTreatedAsAbsent(): void
+    {
+        $_POST['file'] = "avatar.png\x00.php";
+        $_GET['id'] = "1\x00";
+
+        self::assertNull(Form::fetchPost('file'));
+        self::assertSame('none', Form::fetchPost('file', 'none'));
+        self::assertNull(Form::fetchGet('id'));
+        self::assertNull(Form::validatePost(['file']));
+        self::assertSame(['file'], Form::findMissingPost(['file']));
     }
 
     public function testFetchDoesNotEscapeTheValue(): void
@@ -130,8 +188,9 @@ final class FormTest extends TestCase
         self::assertSame(['email', 'phone'], Form::findMissingPost(['email', 'name', 'phone']));
     }
 
-    public function testValidatePostWithNoRequiredFieldsSucceeds(): void
+    public function testValidatePostWithNoRequiredFieldsSucceedsWithAFalsyResult(): void
     {
+        // Success is [], which is falsy: only === null reports failure.
         self::assertSame([], Form::validatePost([]));
     }
 
